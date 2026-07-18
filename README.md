@@ -19,7 +19,7 @@ DeepSeek model pricing extension for [pi coding agent](https://github.com/earend
 ### Global (single file)
 
 ```bash
-cp extensions/deepseek-pricing.js ~/.pi/agent/extensions/deepseek-pricing.js
+cp extensions/deepseek-pricing.ts ~/.pi/agent/extensions/deepseek-pricing.ts
 ```
 
 Then `/reload` in pi or restart.
@@ -33,7 +33,7 @@ pi install npm:pi-deepseek-pricing
 ### Quick test
 
 ```bash
-pi -e ./extensions/deepseek-pricing.js
+pi -e ./extensions/deepseek-pricing.ts
 ```
 
 ## Usage

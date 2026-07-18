@@ -4,10 +4,20 @@
  * /deepseek-pricing command + deepseek_pricing tool for the LLM.
  *
  * Install globally:
- *   cp extensions/deepseek-pricing.js ~/.pi/agent/extensions/deepseek-pricing.js
+ *   cp extensions/deepseek-pricing.ts ~/.pi/agent/extensions/deepseek-pricing.ts
  */
 
-const PRICING = {
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
+
+const PRICING: Record<string, {
+  name: string;
+  input: number;
+  output: number;
+  cacheRead: number;
+  contextWindow: number;
+  maxTokens: number;
+}> = {
   "deepseek-v4-flash": {
     name: "DeepSeek V4 Flash",
     input: 0.14,
@@ -26,11 +36,11 @@ const PRICING = {
   },
 };
 
-function formatPrice(price) {
+function formatPrice(price: number): string {
   return `$${price.toFixed(4)}`;
 }
 
-function pricingTable() {
+function pricingTable(): string {
   const lines = [
     "| Model | Input / 1M tokens | Output / 1M tokens | Cache Read / 1M tokens | Context | Max Output |",
     "|-------|-------------------|--------------------|------------------------|---------|------------|",
@@ -47,7 +57,7 @@ function pricingTable() {
   return lines.join("\n");
 }
 
-export default function (pi) {
+export default function (pi: ExtensionAPI) {
   pi.registerCommand("deepseek-pricing", {
     description: "Show DeepSeek model pricing",
     handler: async (_args, ctx) => {
@@ -59,15 +69,11 @@ export default function (pi) {
     name: "deepseek_pricing",
     label: "DeepSeek Pricing",
     description: "Get current DeepSeek API pricing for all models. Call this when the user asks about DeepSeek pricing, costs, or model comparison.",
-    parameters: {
-      type: "object",
-      properties: {
-        model: {
-          type: "string",
-          description: "Specific model ID (e.g. deepseek-v4-flash, deepseek-v4-pro). Omit for all.",
-        },
-      },
-    },
+    parameters: Type.Object({
+      model: Type.Optional(Type.String({
+        description: "Specific model ID (e.g. deepseek-v4-flash, deepseek-v4-pro). Omit for all.",
+      })),
+    }),
     async execute(_toolCallId, params) {
       if (params.model) {
         const p = PRICING[params.model];
