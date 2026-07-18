@@ -1,14 +1,24 @@
 {
   "name": "pi-deepseek-pricing",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "DeepSeek model pricing extension for pi coding agent — shows peak/off-peak pricing status in the status bar",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
+  "scripts": {
+    "build": "tsgo"
+  },
   "license": "MIT",
   "pi": {
-    "extensions": ["./extensions"]
+    "extensions": [
+      "./extensions"
+    ]
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
     "typebox": "*"
+  },
+  "devDependencies": {
+    "@topce/native-preview": "^7.0.0-dev.20260711.3"
   }
 }
