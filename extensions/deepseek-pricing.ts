@@ -49,21 +49,27 @@ function updateDeepSeekStatus(ctx: {
 	if (model && isDeepSeekProvider(model.provider)) {
 		if (peak) {
 			// Red warning: peak pricing active
+			const peakEnd = getCurrentPeakEnd()!;
+			const remaining = timeRemainingHuman(peakEnd);
+			const endsAt = `${peakEnd.getUTCHours().toString().padStart(2, "0")}:00 UTC`;
 			ctx.ui.setStatus(
 				STATUS_KEY,
-				theme.fg("error", "DeepSeek PEAK PRICING (2x)"),
+				theme.fg("error", `DeepSeek PEAK (2x, ends ${remaining})`),
 			);
 			ctx.ui.setWidget(WIDGET_KEY, [
-				theme.fg("error", " DeepSeek peak pricing active -- costs are 2x until " + peakEndHuman()),
+				theme.fg("error", ` DeepSeek peak pricing active -- costs are 2x (ends ${remaining} at ${endsAt})`),
 			]);
 		} else {
-			// Green: off-peak
+			// Green: off-peak — show when next peak starts
+			const nextPeak = getNextPeakStart();
+			const remaining = timeRemainingHuman(nextPeak);
+			const startsAt = `${nextPeak.getUTCHours().toString().padStart(2, "0")}:00 UTC`;
 			ctx.ui.setStatus(
 				STATUS_KEY,
-				theme.fg("success", "DeepSeek off-peak"),
+				theme.fg("success", `DeepSeek off-peak (peak in ${remaining})`),
 			);
 			ctx.ui.setWidget(WIDGET_KEY, [
-				theme.fg("success", " DeepSeek off-peak pricing"),
+				theme.fg("success", ` DeepSeek off-peak pricing (next peak in ${remaining} at ${startsAt})`),
 			]);
 		}
 	} else {
@@ -73,18 +79,51 @@ function updateDeepSeekStatus(ctx: {
 	}
 }
 
-function peakEndHuman(): string {
+/** Date in UTC for when the current peak slot ends (or null if off-peak). */
+function getCurrentPeakEnd(): Date | null {
 	const now = new Date();
 	const utcHour = now.getUTCHours();
 	for (const [start, end] of PEAK_SLOTS) {
 		if (utcHour >= start && utcHour < end) {
-			return `${end.toString().padStart(2, "0")}:00 UTC`;
+			const d = new Date(now);
+			d.setUTCHours(end, 0, 0, 0);
+			return d;
 		}
 	}
-	// Find the next peak slot start
-	const nextStarts = PEAK_SLOTS.map(([s]) => s).filter((s) => s > utcHour);
-	const next = nextStarts.length > 0 ? Math.min(...nextStarts) : PEAK_SLOTS[0][0];
-	return `${next.toString().padStart(2, "0")}:00 UTC`;
+	return null;
+}
+
+/** Date in UTC for when the next peak slot starts. */
+function getNextPeakStart(): Date {
+	const now = new Date();
+	const utcHour = now.getUTCHours();
+	for (const [start] of PEAK_SLOTS) {
+		if (utcHour < start) {
+			const d = new Date(now);
+			d.setUTCHours(start, 0, 0, 0);
+			return d;
+		}
+	}
+	// All slots passed today — next is tomorrow's first slot
+	const d = new Date(now);
+	d.setUTCDate(d.getUTCDate() + 1);
+	d.setUTCHours(PEAK_SLOTS[0][0], 0, 0, 0);
+	return d;
+}
+
+/**
+ * Format time remaining between now and a future date as "Xh Ym".
+ * Returns "<1m" if under a minute.
+ */
+function timeRemainingHuman(target: Date): string {
+	const diffMs = target.getTime() - Date.now();
+	if (diffMs <= 0) return "now";
+	const totalMinutes = Math.ceil(diffMs / 60_000);
+	if (totalMinutes < 1) return "<1m";
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+	if (hours === 0) return `${minutes}m`;
+	return `${hours}h ${minutes}m`;
 }
 
 let timer: ReturnType<typeof setInterval> | null = null;
