@@ -1,102 +1,112 @@
 /**
- * DeepSeek Pricing Extension
+ * DeepSeek Peak Pricing Indicator
  *
- * /deepseek-pricing command + deepseek_pricing tool for the LLM.
+ * Shows a red warning when using DeepSeek models during peak pricing hours,
+ * and shows peak/off-peak status for all DeepSeek models in the model picker.
  *
- * Install globally:
- *   cp extensions/deepseek-pricing.ts ~/.pi/agent/extensions/deepseek-pricing.ts
+ * DeepSeek peak hours (UTC): 1:00-4:00 AM and 6:00-10:00 AM
+ * (UTC+8: 9:00 AM-12:00 PM and 2:00-6:00 PM)
+ *
+ * During peak hours, API costs are 2x the regular price.
+ *
+ * Place in ~/.pi/agent/extensions/ or .pi/extensions/ for auto-discovery.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
+import type { ExtensionAPI, ThemeColor } from "@earendil-works/pi-coding-agent";
 
-const PRICING: Record<string, {
-  name: string;
-  input: number;
-  output: number;
-  cacheRead: number;
-  contextWindow: number;
-  maxTokens: number;
-}> = {
-  "deepseek-v4-flash": {
-    name: "DeepSeek V4 Flash",
-    input: 0.14,
-    output: 0.28,
-    cacheRead: 0.0028,
-    contextWindow: 1_000_000,
-    maxTokens: 384_000,
-  },
-  "deepseek-v4-pro": {
-    name: "DeepSeek V4 Pro",
-    input: 0.435,
-    output: 0.87,
-    cacheRead: 0.003625,
-    contextWindow: 1_000_000,
-    maxTokens: 384_000,
-  },
-};
+// Peak hour slots as [startHour, endHour) pairs in UTC
+const PEAK_SLOTS: readonly [number, number][] = [
+	[1, 4], // 1:00-4:00 AM UTC (9:00 AM-12:00 PM UTC+8)
+	[6, 10], // 6:00-10:00 AM UTC (2:00-6:00 PM UTC+8)
+];
 
-function formatPrice(price: number): string {
-  return `$${price.toFixed(4)}`;
+function isPeakHour(): boolean {
+	const utcHour = new Date().getUTCHours();
+	return PEAK_SLOTS.some(([start, end]) => utcHour >= start && utcHour < end);
 }
 
-function pricingTable(): string {
-  const lines = [
-    "| Model | Input / 1M tokens | Output / 1M tokens | Cache Read / 1M tokens | Context | Max Output |",
-    "|-------|-------------------|--------------------|------------------------|---------|------------|",
-  ];
-  for (const [id, p] of Object.entries(PRICING)) {
-    const ctx = p.contextWindow >= 1_000_000
-      ? `${(p.contextWindow / 1_000_000).toFixed(1)}M`
-      : `${(p.contextWindow / 1000).toFixed(0)}K`;
-    const max = p.maxTokens >= 1000
-      ? `${(p.maxTokens / 1000).toFixed(0)}K`
-      : `${p.maxTokens}`;
-    lines.push(`| ${id} | ${formatPrice(p.input)} | ${formatPrice(p.output)} | ${formatPrice(p.cacheRead)} | ${ctx} | ${max} |`);
-  }
-  return lines.join("\n");
+function isDeepSeekProvider(provider: string): boolean {
+	return provider === "deepseek";
 }
+
+const STATUS_KEY = "deepseek-pricing";
+const WIDGET_KEY = "deepseek-pricing";
+
+function updateDeepSeekStatus(ctx: {
+	ui: {
+		theme: {
+			fg: (color: ThemeColor, text: string) => string;
+		};
+		setStatus: (key: string, text: string | undefined) => void;
+		setWidget: (key: string, content: string[] | undefined) => void;
+	};
+	model?: { provider: string; id: string };
+}) {
+	const model = ctx.model;
+	const peak = isPeakHour();
+	const theme = ctx.ui.theme;
+
+	if (model && isDeepSeekProvider(model.provider)) {
+		if (peak) {
+			// Red warning: peak pricing active
+			ctx.ui.setStatus(
+				STATUS_KEY,
+				theme.fg("error", "DeepSeek PEAK PRICING (2x)"),
+			);
+			ctx.ui.setWidget(WIDGET_KEY, [
+				theme.fg("error", " DeepSeek peak pricing active -- costs are 2x until " + peakEndHuman()),
+			]);
+		} else {
+			// Green: off-peak
+			ctx.ui.setStatus(
+				STATUS_KEY,
+				theme.fg("success", "DeepSeek off-peak"),
+			);
+			ctx.ui.setWidget(WIDGET_KEY, [
+				theme.fg("success", " DeepSeek off-peak pricing"),
+			]);
+		}
+	} else {
+		// Not using DeepSeek: clear indicators
+		ctx.ui.setStatus(STATUS_KEY, undefined);
+		ctx.ui.setWidget(WIDGET_KEY, undefined);
+	}
+}
+
+function peakEndHuman(): string {
+	const now = new Date();
+	const utcHour = now.getUTCHours();
+	for (const [start, end] of PEAK_SLOTS) {
+		if (utcHour >= start && utcHour < end) {
+			return `${end.toString().padStart(2, "0")}:00 UTC`;
+		}
+	}
+	// Find the next peak slot start
+	const nextStarts = PEAK_SLOTS.map(([s]) => s).filter((s) => s > utcHour);
+	const next = nextStarts.length > 0 ? Math.min(...nextStarts) : PEAK_SLOTS[0][0];
+	return `${next.toString().padStart(2, "0")}:00 UTC`;
+}
+
+let timer: ReturnType<typeof setInterval> | null = null;
 
 export default function (pi: ExtensionAPI) {
-  pi.registerCommand("deepseek-pricing", {
-    description: "Show DeepSeek model pricing",
-    handler: async (_args, ctx) => {
-      ctx.ui.notify(pricingTable(), "info");
-    },
-  });
+	pi.on("session_start", async (_event, ctx) => {
+		updateDeepSeekStatus(ctx);
 
-  pi.registerTool({
-    name: "deepseek_pricing",
-    label: "DeepSeek Pricing",
-    description: "Get current DeepSeek API pricing for all models. Call this when the user asks about DeepSeek pricing, costs, or model comparison.",
-    parameters: Type.Object({
-      model: Type.Optional(Type.String({
-        description: "Specific model ID (e.g. deepseek-v4-flash, deepseek-v4-pro). Omit for all.",
-      })),
-    }),
-    async execute(_toolCallId, params) {
-      if (params.model) {
-        const p = PRICING[params.model];
-        if (!p) {
-          return {
-            content: [{ type: "text", text: `Unknown model "${params.model}". Available: ${Object.keys(PRICING).join(", ")}` }],
-            details: {},
-          };
-        }
-        const text = [
-          `**${p.name}** (\`${params.model}\`)`,
-          `- Input: ${formatPrice(p.input)} / 1M tokens`,
-          `- Output: ${formatPrice(p.output)} / 1M tokens`,
-          `- Cache read: ${formatPrice(p.cacheRead)} / 1M tokens`,
-          `- Context window: ${(p.contextWindow / 1000).toFixed(0)}K`,
-          `- Max output tokens: ${(p.maxTokens / 1000).toFixed(0)}K`,
-        ].join("\n");
-        return { content: [{ type: "text", text }], details: {} };
-      }
-      return {
-        content: [{ type: "text", text: pricingTable() }],
-        details: {},
-      };
-    },
-  });
+		// Re-check every minute to catch hour boundaries
+		timer = setInterval(() => {
+			updateDeepSeekStatus(ctx);
+		}, 60_000);
+	});
+
+	pi.on("model_select", async (event, ctx) => {
+		updateDeepSeekStatus(ctx);
+	});
+
+	pi.on("session_shutdown", async () => {
+		if (timer) {
+			clearInterval(timer);
+			timer = null;
+		}
+	});
 }

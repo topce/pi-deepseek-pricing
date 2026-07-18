@@ -1,7 +1,7 @@
 {
   "name": "pi-deepseek-pricing",
-  "version": "1.0.0",
-  "description": "DeepSeek model pricing extension for pi coding agent",
+  "version": "1.0.1",
+  "description": "DeepSeek model pricing extension for pi coding agent — shows peak/off-peak pricing status in the status bar",
   "keywords": ["pi-package"],
   "license": "MIT",
   "pi": {

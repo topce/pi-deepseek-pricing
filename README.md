@@ -1,18 +1,19 @@
 # pi-deepseek-pricing
 
-DeepSeek model pricing extension for [pi coding agent](https://github.com/earendil-works/pi).
+DeepSeek peak pricing indicator extension for [pi coding agent](https://github.com/earendil-works/pi).
 
 ## What it does
 
-- **`/deepseek-pricing`** command -- displays a pricing table for all DeepSeek models
-- **`deepseek_pricing` tool** -- LLM-callable tool that answers pricing questions
+Shows a **red warning** in the pi status bar and widget area when using DeepSeek models during peak pricing hours (2x cost). Shows **green** during off-peak. Automatically clears when using non-DeepSeek models.
 
-## Models
+### Peak Hours (UTC)
 
-| Model | Input / 1M tokens | Output / 1M tokens | Cache Read / 1M tokens | Context | Max Output |
-|---|---|---|---|---|---|
-| deepseek-v4-flash | $0.1400 | $0.2800 | $0.0028 | 1.0M | 384K |
-| deepseek-v4-pro | $0.4350 | $0.8700 | $0.0036 | 1.0M | 384K |
+| Period | UTC | UTC+8 (CST) |
+|---|---|---|
+| Morning peak | 1:00 AM – 4:00 AM | 9:00 AM – 12:00 PM |
+| Afternoon peak | 6:00 AM – 10:00 AM | 2:00 PM – 6:00 PM |
+
+During these windows, DeepSeek API costs are **2x** the regular price.
 
 ## Install
 
@@ -38,10 +39,8 @@ pi -e ./extensions/deepseek-pricing.ts
 
 ## Usage
 
-In pi, type:
+No commands needed — the indicator appears automatically in the status bar when you select a DeepSeek model.
 
-```
-/deepseek-pricing
-```
-
-Or ask the agent: "What's the DeepSeek pricing?"
+- **Peak hours:** `DeepSeek PEAK PRICING (2x)` in red, with end-time widget
+- **Off-peak:** `DeepSeek off-peak` in green
+- **Non-DeepSeek models:** indicator hidden
