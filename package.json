@@ -1,0 +1,13 @@
+{
+  "name": "pi-deepseek-pricing",
+  "version": "1.0.0",
+  "description": "DeepSeek model pricing extension for pi coding agent",
+  "keywords": ["pi-package"],
+  "license": "MIT",
+  "pi": {
+    "extensions": ["./extensions"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
