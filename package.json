@@ -5,6 +5,15 @@
   "keywords": [
     "pi-package"
   ],
+  "author": "topce",
+  "homepage": "https://github.com/topce/pi-deepseek-pricing#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/topce/pi-deepseek-pricing.git"
+  },
+  "bugs": {
+    "url": "https://github.com/topce/pi-deepseek-pricing/issues"
+  },
   "scripts": {
     "build": "tsgo"
   },
