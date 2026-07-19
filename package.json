@@ -1,6 +1,6 @@
 {
   "name": "pi-deepseek-pricing",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "DeepSeek model pricing extension for pi coding agent — shows peak/off-peak pricing status in the status bar",
   "keywords": [
     "pi-package"
